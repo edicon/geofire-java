@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.support.v4.app.FragmentActivity;
+import android.support.v7.app.AppCompatActivity;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.Interpolator;
 import com.firebase.geofire.GeoFire;
@@ -14,6 +15,7 @@ import com.firebase.geofire.GeoQuery;
 import com.firebase.geofire.GeoQueryEventListener;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.*;
 import com.google.firebase.FirebaseApp;
@@ -24,12 +26,16 @@ import com.google.firebase.database.FirebaseDatabase;
 import java.util.HashMap;
 import java.util.Map;
 
-public class SFVehiclesActivity extends FragmentActivity implements GeoQueryEventListener, GoogleMap.OnCameraChangeListener {
+public class SFVehiclesActivity extends AppCompatActivity implements
+        OnMapReadyCallback,
+        GeoQueryEventListener, GoogleMap.OnCameraChangeListener {
 
     private static final GeoLocation INITIAL_CENTER = new GeoLocation(37.7789, -122.4017);
     private static final int INITIAL_ZOOM_LEVEL = 14;
     private static final String GEO_FIRE_DB = "https://publicdata-transit.firebaseio.com";
     private static final String GEO_FIRE_REF = GEO_FIRE_DB + "/_geofire";
+    // private static final String GEO_FIRE_DB = "https://publicdata-transit.firebaseio.com";
+    // private static final String GEO_FIRE_REF = GEO_FIRE_DB + "/sf-muni";
 
     private GoogleMap map;
     private Circle searchCircle;
@@ -45,7 +51,11 @@ public class SFVehiclesActivity extends FragmentActivity implements GeoQueryEven
 
         // setup map and camera position
         SupportMapFragment mapFragment = (SupportMapFragment)getSupportFragmentManager().findFragmentById(R.id.map);
-        this.map = mapFragment.getMap();
+        mapFragment.getMapAsync(this);
+        // this.map = mapFragment.getMapAsync(this);
+        // this.map = mapFragment.getMap();
+
+        /*
         LatLng latLngCenter = new LatLng(INITIAL_CENTER.latitude, INITIAL_CENTER.longitude);
         this.searchCircle = this.map.addCircle(new CircleOptions().center(latLngCenter).radius(1000));
         this.searchCircle.setFillColor(Color.argb(66, 255, 0, 255));
@@ -63,6 +73,34 @@ public class SFVehiclesActivity extends FragmentActivity implements GeoQueryEven
 
         // setup markers
         this.markers = new HashMap<String, Marker>();
+
+        this.geoQuery.addGeoQueryEventListener(this);
+        */
+    }
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        map = googleMap;
+
+        LatLng latLngCenter = new LatLng(INITIAL_CENTER.latitude, INITIAL_CENTER.longitude);
+        this.searchCircle = this.map.addCircle(new CircleOptions().center(latLngCenter).radius(1000));
+        this.searchCircle.setFillColor(Color.argb(66, 255, 0, 255));
+        this.searchCircle.setStrokeColor(Color.argb(66, 0, 0, 0));
+        this.map.moveCamera(CameraUpdateFactory.newLatLngZoom(latLngCenter, INITIAL_ZOOM_LEVEL));
+        this.map.setOnCameraChangeListener(this);
+
+        FirebaseOptions options = new FirebaseOptions.Builder().setApplicationId("geofire").setDatabaseUrl(GEO_FIRE_DB).build();
+        FirebaseApp app = FirebaseApp.initializeApp(this, options);
+
+        // setup GeoFire
+        this.geoFire = new GeoFire(FirebaseDatabase.getInstance(app).getReferenceFromUrl(GEO_FIRE_REF));
+        // radius in km
+        this.geoQuery = this.geoFire.queryAtLocation(INITIAL_CENTER, 1);
+
+        // setup markers
+        this.markers = new HashMap<String, Marker>();
+
+        this.geoQuery.addGeoQueryEventListener(this);
     }
 
     @Override
@@ -80,7 +118,7 @@ public class SFVehiclesActivity extends FragmentActivity implements GeoQueryEven
     protected void onStart() {
         super.onStart();
         // add an event listener to start updating locations again
-        this.geoQuery.addGeoQueryEventListener(this);
+        // this.geoQuery.addGeoQueryEventListener(this);
     }
 
     @Override
@@ -165,4 +203,5 @@ public class SFVehiclesActivity extends FragmentActivity implements GeoQueryEven
         // radius in km
         this.geoQuery.setRadius(radius/1000);
     }
+
 }
